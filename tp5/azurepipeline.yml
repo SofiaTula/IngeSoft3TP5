@@ -2,12 +2,13 @@ trigger:
   - main
 
 pool:
-  name: SelfHosted
+  name: SelfHosted   # usa tu agente self-hosted, o reemplaza por "vmImage: ubuntu-latest" si querés hosted
 
 stages:
   - stage: CI
     displayName: "Continuous Integration"
     jobs:
+      # --------------------- BACKEND ---------------------
       - job: Backend
         displayName: "Backend CI"
         steps:
@@ -26,13 +27,24 @@ stages:
             displayName: "Run Backend Tests (Optional)"
             continueOnError: true
 
-          - task: PublishBuildArtifacts@1
+          # Empaquetar backend como .zip
+          - task: ArchiveFiles@2
+            displayName: "Empaquetar Backend"
             inputs:
-              PathtoPublish: ‘tp5/coffehub/backend'
+              rootFolderOrFile: '$(Build.SourcesDirectory)/tp5/coffehub/backend'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
+
+          # Publicar artefacto backend
+          - task: PublishBuildArtifacts@1
+            displayName: "Publicar artefacto Backend"
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/backend.zip'
               ArtifactName: 'backend'
               publishLocation: 'Container'
-            displayName: "Publicar artefacto Backend"
 
+      # --------------------- FRONTEND ---------------------
       - job: Frontend
         displayName: "Frontend CI"
         steps:
@@ -46,9 +58,19 @@ stages:
               npm run build || echo "No build script definido"
             displayName: "Build Frontend"
 
-          - task: PublishBuildArtifacts@1
+          # Empaquetar frontend como .zip
+          - task: ArchiveFiles@2
+            displayName: "Empaquetar Frontend"
             inputs:
-              PathtoPublish: ‘tp5/coffehub/frontend'
+              rootFolderOrFile: '$(Build.SourcesDirectory)/tp5/coffehub/frontend'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+
+          # Publicar artefacto frontend
+          - task: PublishBuildArtifacts@1
+            displayName: "Publicar artefacto Frontend"
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/frontend.zip'
               ArtifactName: 'frontend'
               publishLocation: 'Container'
-            displayName: "Publicar artefacto Frontend"
