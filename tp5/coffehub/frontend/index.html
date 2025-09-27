@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoffeeHub - Tu Portal del Café</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>☕ CoffeeHub</h1>
+      <div class="subtitle">Descubre el mundo del café perfecto</div>
+    </header>
+
+    <div class="stats">
+      <div class="stat-card">
+        <span class="stat-number" id="total-coffees">0</span>
+        <div class="stat-label">Cafés Registrados</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="avg-price">$0</span>
+        <div class="stat-label">Precio Promedio</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="popular-origin">-</span>
+        <div class="stat-label">Origen Popular</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" onclick="toggleForm()">➕ Agregar Café</button>
+    </div>
+
+    <div class="add-form" id="add-form" style="display:none;">
+      <h3 class="form-title">Agregar Nuevo Café</h3>
+      <form id="coffee-form">
+        <input type="text" id="name" placeholder="Nombre del Café" required>
+        <input type="text" id="origin" placeholder="Origen" required>
+        <input type="text" id="type" placeholder="Tipo" required>
+        <input type="number" id="price" step="0.01" placeholder="Precio (por libra)" required>
+        <input type="text" id="roast" placeholder="Nivel de Tostado" required>
+        <input type="number" id="rating" min="1" max="5" step="0.1" placeholder="Calificación (1-5)" required>
+        <textarea id="description" placeholder="Descripción"></textarea>
+        <button type="submit" class="btn">✅ Agregar Café</button>
+      </form>
+    </div>
+
+    <div class="coffee-grid" id="coffee-grid">
+      <div class="loading">Cargando cafés...</div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
