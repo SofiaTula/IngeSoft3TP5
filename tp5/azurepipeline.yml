@@ -2,49 +2,52 @@ trigger:
   - main
 
 pool:
-  name: SelfHosted   # usa tu agente self-hosted, o reemplaza por "vmImage: ubuntu-latest" si querés hosted
+  name: SelfHosted
 
 stages:
   - stage: CI
     displayName: "Continuous Integration"
     jobs:
-      # --------------------- BACKEND ---------------------
       - job: Backend
         displayName: "Backend CI"
+        services:
+          mysql:
+            image: mysql:8.0
+            env:
+              MYSQL_ROOT_PASSWORD: root
+              MYSQL_DATABASE: coffeehub
+            ports:
+              - 3306:3306
         steps:
           - task: NodeTool@0
             inputs:
               versionSpec: '18.x'
 
           - script: |
-              cd tp5/coffehub/backend
+              cd coffehub/backend
               npm install
             displayName: "Install Backend"
 
           - script: |
-              cd tp5/coffehub/backend
+              cd coffehub/backend
+              # Esperar un poco a que MySQL arranque
+              sleep 20
+              # Exportar variables para el backend
+              export DB_HOST=localhost
+              export DB_USER=root
+              export DB_PASS=root
+              export DB_NAME=coffeehub
               npm test || echo "No tests definidos (skipped)"
             displayName: "Run Backend Tests (Optional)"
             continueOnError: true
 
-          # Empaquetar backend como .zip
-          - task: ArchiveFiles@2
-            displayName: "Empaquetar Backend"
-            inputs:
-              rootFolderOrFile: '$(Build.SourcesDirectory)/tp5/coffehub/backend'
-              includeRootFolder: false
-              archiveType: zip
-              archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
-
-          # Publicar artefacto backend
           - task: PublishBuildArtifacts@1
-            displayName: "Publicar artefacto Backend"
             inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)/backend.zip'
+              PathtoPublish: 'coffehub/backend'
               ArtifactName: 'backend'
               publishLocation: 'Container'
+            displayName: "Publicar artefacto Backend"
 
-      # --------------------- FRONTEND ---------------------
       - job: Frontend
         displayName: "Frontend CI"
         steps:
@@ -53,24 +56,14 @@ stages:
               versionSpec: '18.x'
 
           - script: |
-              cd tp5/coffehub/frontend
+              cd coffehub/frontend
               npm install || true
               npm run build || echo "No build script definido"
             displayName: "Build Frontend"
 
-          # Empaquetar frontend como .zip
-          - task: ArchiveFiles@2
-            displayName: "Empaquetar Frontend"
-            inputs:
-              rootFolderOrFile: '$(Build.SourcesDirectory)/tp5/coffehub/frontend'
-              includeRootFolder: false
-              archiveType: zip
-              archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
-
-          # Publicar artefacto frontend
           - task: PublishBuildArtifacts@1
-            displayName: "Publicar artefacto Frontend"
             inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+              PathtoPublish: 'coffehub/frontend'
               ArtifactName: 'frontend'
               publishLocation: 'Container'
+            displayName: "Publicar artefacto Frontend"

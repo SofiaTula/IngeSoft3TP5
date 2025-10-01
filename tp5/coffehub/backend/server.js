@@ -7,19 +7,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 📌 Conexión a MySQL
+// 📌 Conexión a MySQL usando variables de entorno
 const db = mysql.createConnection({
-  host: "localhost",    // Cambia si usas Docker o un servidor remoto
-  user: "root",         // Tu usuario de MySQL
-  password: "",         // Tu contraseña
-  database: "coffeehub" // Asegúrate de crear esta base antes
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASS || "",
+  database: process.env.DB_NAME || "coffeehub"
 });
 
 db.connect((err) => {
   if (err) {
     console.error("❌ Error conectando a MySQL:", err.message);
   } else {
-    console.log("✅ Conectado a MySQL");
+    console.log("✅ Conectado a MySQL en", process.env.DB_HOST || "localhost");
   }
 });
 
@@ -44,12 +44,12 @@ db.query("SELECT COUNT(*) as count FROM coffees", (err, rows) => {
 
   if (rows[0].count === 0) {
     const samples = [
-      ["Blue Mountain Supreme", "Jamaica", "Arábica", 85.99, "Medio", 4.9, "Un café excepcional con notas suaves de chocolate y nuez."],
-      ["Ethiopian Yirgacheffe", "Etiopía", "Arábica", 24.99, "Claro", 4.7, "Café floral y afrutado con notas cítricas brillantes."],
-      ["Colombian Supremo", "Colombia", "Arábica", 18.50, "Medio", 4.6, "Equilibrio perfecto entre acidez y cuerpo, con notas de caramelo."],
+      ["Blue Mountain Supreme", "Jamaica", "Arábica", 85.99, "Medio", 4.9, "Notas suaves de chocolate y nuez."],
+      ["Ethiopian Yirgacheffe", "Etiopía", "Arábica", 24.99, "Claro", 4.7, "Café floral y afrutado con notas cítricas."],
+      ["Colombian Supremo", "Colombia", "Arábica", 18.50, "Medio", 4.6, "Equilibrio perfecto entre acidez y cuerpo."],
       ["Brazilian Santos", "Brasil", "Arábica", 15.99, "Medio-Oscuro", 4.3, "Café suave y cremoso con notas de chocolate."],
-      ["Vietnamese Robusta", "Vietnam", "Robusta", 12.99, "Oscuro", 4.1, "Café intenso y fuerte con alto contenido de cafeína."],
-      ["Hawaiian Kona", "Hawái", "Arábica", 65.00, "Medio", 4.8, "Café suave y aromático con notas de mantequilla y especias."]
+      ["Vietnamese Robusta", "Vietnam", "Robusta", 12.99, "Oscuro", 4.1, "Café intenso y fuerte, alto en cafeína."],
+      ["Hawaiian Kona", "Hawái", "Arábica", 65.00, "Medio", 4.8, "Café aromático con notas de mantequilla y especias."]
     ];
 
     const sql = `INSERT INTO coffees (name, origin, type, price, roast, rating, description)
@@ -101,7 +101,7 @@ app.get("/stats", (req, res) => {
 // 📌 Servir frontend
 app.use(express.static(path.join(__dirname, "../frontend")));
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`✅ CoffeeHub corriendo en http://localhost:${PORT}`);
 });
