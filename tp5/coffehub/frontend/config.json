@@ -1,0 +1,11 @@
+{
+  "qa": {
+    "apiUrl": "https://coffeehub-backend-qa.azurewebsites.net"
+  },
+  "prod": {
+    "apiUrl": "https://coffeehub-backend-prod.azurewebsites.net"
+  },
+  "local": {
+    "apiUrl": "http://localhost:4000"
+  }
+}
