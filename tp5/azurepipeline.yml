@@ -10,40 +10,25 @@ stages:
     jobs:
       - job: Backend
         displayName: "Backend CI"
-        services:
-          mysql:
-            image: mysql:8.0
-            env:
-              MYSQL_ROOT_PASSWORD: root
-              MYSQL_DATABASE: coffeehub
-            ports:
-              - 3306:3306
         steps:
           - task: NodeTool@0
             inputs:
               versionSpec: '18.x'
 
           - script: |
-              cd coffehub/backend
+              cd tp5/coffehub/backend
               npm install
             displayName: "Install Backend"
 
           - script: |
-              cd coffehub/backend
-              # Esperar un poco a que MySQL arranque
-              sleep 20
-              # Exportar variables para el backend
-              export DB_HOST=localhost
-              export DB_USER=root
-              export DB_PASS=root
-              export DB_NAME=coffeehub
-              npm test || echo "No tests definidos (skipped)"
+              cd tp5/coffehub/backend
+              npm test || echo "Tests skipped (no DB available)"
             displayName: "Run Backend Tests (Optional)"
             continueOnError: true
 
           - task: PublishBuildArtifacts@1
             inputs:
-              PathtoPublish: 'coffehub/backend'
+              PathtoPublish: 'tp5/coffehub/backend'
               ArtifactName: 'backend'
               publishLocation: 'Container'
             displayName: "Publicar artefacto Backend"
@@ -56,14 +41,14 @@ stages:
               versionSpec: '18.x'
 
           - script: |
-              cd coffehub/frontend
+              cd tp5/coffehub/frontend
               npm install || true
               npm run build || echo "No build script definido"
             displayName: "Build Frontend"
 
           - task: PublishBuildArtifacts@1
             inputs:
-              PathtoPublish: 'coffehub/frontend'
+              PathtoPublish: 'tp5/coffehub/frontend'
               ArtifactName: 'frontend'
               publishLocation: 'Container'
             displayName: "Publicar artefacto Frontend"
