@@ -4,51 +4,138 @@ trigger:
 pool:
   name: SelfHosted
 
+
+variables:
+  azureSubscription: 'azure-tp05-connection'   # nombre de tu Service Connection en DevOps
+  backendQA: 'coffehub-Backend-QA'
+  frontendQA: 'coffehub-Front-QA'
+  backendPROD: 'coffehub-Backend-PROD'
+  frontendPROD: 'coffehub-Front-PROD'
+
 stages:
-  - stage: CI
-    displayName: "Continuous Integration"
-    jobs:
-      - job: Backend
-        displayName: "Backend CI"
-        steps:
-          - task: NodeTool@0
-            inputs:
-              versionSpec: '18.x'
+# ---------------- CI ----------------
+- stage: CI
+  displayName: "Continuous Integration"
+  jobs:
+    - job: Backend
+      displayName: "Backend CI"
+      steps:
+        - task: NodeTool@0
+          inputs:
+            versionSpec: '18.x'
 
-          - script: |
-              cd tp5/coffehub/backend
-              npm install
-            displayName: "Install Backend"
+        - script: |
+            cd tp5/coffehub/backend
+            npm install
+          displayName: "Install Backend"
 
-          - script: |
-              cd tp5/coffehub/backend
-              npm test || echo "Tests skipped (no DB available)"
-            displayName: "Run Backend Tests (Optional)"
-            continueOnError: true
+        - script: |
+            cd tp5/coffehub/backend
+            npm test || echo "Tests skipped (no DB available)"
+          displayName: "Run Backend Tests (Optional)"
+          continueOnError: true
 
-          - task: PublishBuildArtifacts@1
-            inputs:
-              PathtoPublish: 'tp5/coffehub/backend'
-              ArtifactName: 'backend'
-              publishLocation: 'Container'
-            displayName: "Publicar artefacto Backend"
+        - task: PublishBuildArtifacts@1
+          inputs:
+            PathtoPublish: 'tp5/coffehub/backend'
+            ArtifactName: 'backend'
+            publishLocation: 'Container'
+          displayName: "Publicar artefacto Backend"
 
-      - job: Frontend
-        displayName: "Frontend CI"
-        steps:
-          - task: NodeTool@0
-            inputs:
-              versionSpec: '18.x'
+    - job: Frontend
+      displayName: "Frontend CI"
+      steps:
+        - task: NodeTool@0
+          inputs:
+            versionSpec: '18.x'
 
-          - script: |
-              cd tp5/coffehub/frontend
-              npm install || true
-              npm run build || echo "No build script definido"
-            displayName: "Build Frontend"
+        - script: |
+            cd tp5/coffehub/frontend
+            npm install || true
+            npm run build || echo "No build script definido"
+          displayName: "Build Frontend"
 
-          - task: PublishBuildArtifacts@1
-            inputs:
-              PathtoPublish: 'tp5/coffehub/frontend'
-              ArtifactName: 'frontend'
-              publishLocation: 'Container'
-            displayName: "Publicar artefacto Frontend"
+        - task: PublishBuildArtifacts@1
+          inputs:
+            PathtoPublish: 'tp5/coffehub/frontend'
+            ArtifactName: 'frontend'
+            publishLocation: 'Container'
+          displayName: "Publicar artefacto Frontend"
+
+# ---------------- QA ----------------
+- stage: DeployQA
+  displayName: "Deploy to QA"
+  dependsOn: CI
+  condition: succeeded()
+  jobs:
+    - deployment: DeployQAJob
+      displayName: "Deploy to QA Environment"
+      environment: "QA"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: 'backend'
+                  downloadPath: '$(Pipeline.Workspace)/backend'
+
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: 'frontend'
+                  downloadPath: '$(Pipeline.Workspace)/frontend'
+
+              - task: AzureWebApp@1
+                displayName: "Deploy Backend to QA"
+                inputs:
+                  azureSubscription: '$(azureSubscription)'
+                  appType: 'webApp'
+                  appName: '$(backendQA)'
+                  package: '$(Pipeline.Workspace)/backend'
+
+              - task: AzureWebApp@1
+                displayName: "Deploy Frontend to QA"
+                inputs:
+                  azureSubscription: '$(azureSubscription)'
+                  appType: 'webApp'
+                  appName: '$(frontendQA)'
+                  package: '$(Pipeline.Workspace)/frontend'
+
+# ---------------- PROD ----------------
+- stage: DeployPROD
+  displayName: "Deploy to PROD"
+  dependsOn: DeployQA
+  condition: succeeded()
+  jobs:
+    - deployment: DeployPRODJob
+      displayName: "Deploy to PROD Environment"
+      environment: "PROD"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: 'backend'
+                  downloadPath: '$(Pipeline.Workspace)/backend'
+
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: 'frontend'
+                  downloadPath: '$(Pipeline.Workspace)/frontend'
+
+              - task: AzureWebApp@1
+                displayName: "Deploy Backend to PROD"
+                inputs:
+                  azureSubscription: '$(azureSubscription)'
+                  appType: 'webApp'
+                  appName: '$(backendPROD)'
+                  package: '$(Pipeline.Workspace)/backend'
+
+              - task: AzureWebApp@1
+                displayName: "Deploy Frontend to PROD"
+                inputs:
+                  azureSubscription: '$(azureSubscription)'
+                  appType: 'webApp'
+                  appName: '$(frontendPROD)'
+                  package: '$(Pipeline.Workspace)/frontend'
