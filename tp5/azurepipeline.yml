@@ -79,28 +79,28 @@ stages:
             # ---- Configurar MongoDB en Backend QA ----
             - task: Bash@3
               displayName: 'Configurar MongoDB QA (sin AzureCLI local)'
-              inputs:
-                targetType: 'inline'
-                script: |
-                  docker run --rm -v $(pwd):/mnt mcr.microsoft.com/azure-cli az webapp config appsettings set \
-                    --name "$(backendAppNameQA)" \
-                    --resource-group "$(RESOURCE_GROUP_NAME)" \
-                    --settings MONGODB_URI="$(MONGODB_URI)"
+            inputs:
+              targetType: 'inline'
+              script: |
+                docker run --rm -v $(pwd):/mnt mcr.microsoft.com/azure-cli az webapp config appsettings set \
+                  --name "$(backendAppNameQA)" \
+                  --resource-group "$(RESOURCE_GROUP_NAME)" \
+                  --settings MONGODB_URI="$(MONGODB_URI)"
 
-                        # ---- Frontend ----
-                        - task: DownloadPipelineArtifact@2
-                          inputs:
-                            artifact: 'frontend-code'
-                            path: '$(Pipeline.Workspace)/frontend-source'
+                      # ---- Frontend ----
+                      - task: DownloadPipelineArtifact@2
+                        inputs:
+                          artifact: 'frontend-code'
+                          path: '$(Pipeline.Workspace)/frontend-source'
 
-                        - task: AzureWebApp@1
-                          displayName: "Deploy Frontend QA"
-                          inputs:
-                            azureSubscription: '$(azureServiceConnection)'
-                            appName: '$(frontendAppNameQA)'
-                            package: '$(Pipeline.Workspace)/frontend-source'
-                            runtimeStack: 'NODE|18-lts'
-                            startUpCommand: 'npm install && npm start'
+                      - task: AzureWebApp@1
+                        displayName: "Deploy Frontend QA"
+                        inputs:
+                          azureSubscription: '$(azureServiceConnection)'
+                          appName: '$(frontendAppNameQA)'
+                          package: '$(Pipeline.Workspace)/frontend-source'
+                          runtimeStack: 'NODE|18-lts'
+                          startUpCommand: 'npm install && npm start'
 
             # ---- Configuración QA ----
             - task: AzureCLI@2
