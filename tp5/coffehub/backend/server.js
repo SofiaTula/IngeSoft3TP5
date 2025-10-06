@@ -36,7 +36,6 @@ const allowedOrigins = [
   "http://localhost:8080",
   "http://localhost:4000",
   "https://coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net", // ✅ dominio QA correcto
-  "https://coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net", // PROD
   ];
 
 app.use(cors({
