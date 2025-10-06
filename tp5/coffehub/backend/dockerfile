@@ -1,0 +1,18 @@
+# Usa una imagen base de Node.js
+FROM node:18-alpine
+
+# Instalar dependencias necesarias para compilar sqlite3 (CRÍTICO)
+RUN apk add --no-cache python3 make g++
+
+# Establece el directorio de trabajo
+WORKDIR /app
+
+# Copia e instala dependencias (incluyendo sqlite3)
+COPY package*.json ./
+RUN npm install
+
+# Copia el resto del código
+COPY . .
+
+# Comando de inicio
+CMD ["npm", "start"]

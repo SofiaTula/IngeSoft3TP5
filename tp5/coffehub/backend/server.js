@@ -1,61 +1,150 @@
-const express = require("express");
-const cors = require("cors");
-const mysql = require("mysql2");
-const path = require("path");
+// ================================
+// ☕ CoffeeHub Backend - MongoDB
+// ================================
+import express from "express";
+import cors from "cors";
+import { MongoClient, ObjectId } from "mongodb";
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 4000;
 
-// CORS solo a tus front QA/PROD
+// ================================
+// 🔗 MongoDB Connection
+// ================================
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://coffeehub_user:4r53CGzV7s0RykDr@cluster0.zapqwxx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+let db;
+let productsCollection;
+
+async function connectDB() {
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    db = client.db("coffeehub");
+    productsCollection = db.collection("products");
+    console.log("✅ Conectado a MongoDB Atlas");
+  } catch (error) {
+    console.error("❌ Error conectando a MongoDB:", error);
+    process.exit(1);
+  }
+}
+
+// ================================
+// 🌐 CORS
+// ================================
 const allowedOrigins = [
-  "https://coffeehub-front-qa.azurewebsites.net",
-  "https://coffeehub-front-prod.azurewebsites.net"
+  "http://localhost:8080",
+  "http://localhost:4000",
+  "https://coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net",
+  "https://coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net",
 ];
+
 app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`CORS bloqueado para: ${origin}`);
+    return callback(new Error(`CORS no permitido para: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 }));
 
-// Conexión DB con variables de Azure
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "",
-  database: process.env.DB_NAME || "coffeehub",
-  port: process.env.DB_PORT || 3306
+app.options('*', cors());
+app.use(express.json());
+
+// ================================
+// 📦 Endpoints API
+// ================================
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    database: db ? "connected" : "disconnected"
+  });
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("❌ Error conectando a MySQL:", err.message);
-  } else {
-    console.log("✅ Conectado a MySQL en", process.env.DB_HOST || "localhost");
+// GET todos los productos
+app.get("/api/products", async (req, res) => {
+  try {
+    const products = await productsCollection.find({}).toArray();
+    res.json(products);
+  } catch (err) {
+    console.error("Error al obtener productos:", err);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
-// Endpoints
-app.get("/coffees", (req, res) => {
-  db.query("SELECT * FROM coffees", (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
-});
-
-app.post("/coffees", (req, res) => {
+// POST agregar producto
+app.post("/api/products", async (req, res) => {
   const { name, origin, type, price, roast, rating, description } = req.body;
-  const sql = `INSERT INTO coffees (name, origin, type, price, roast, rating, description)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`;
-  db.query(sql, [name, origin, type, price, roast, rating, description], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ id: result.insertId, ...req.body });
-  });
+  
+  try {
+    const newProduct = {
+      name,
+      origin,
+      type,
+      price: parseFloat(price),
+      roast,
+      rating: parseFloat(rating),
+      description: description || "Sin descripción",
+      createdAt: new Date()
+    };
+    
+    const result = await productsCollection.insertOne(newProduct);
+    res.status(201).json({ 
+      _id: result.insertedId,
+      ...newProduct 
+    });
+  } catch (err) {
+    console.error("Error al insertar producto:", err);
+    res.status(500).json({ error: "Error al crear producto" });
+  }
 });
 
-// Servir frontend compilado (opcional)
-app.use(express.static(path.join(__dirname, "../frontend")));
+// GET estadísticas
+app.get("/api/stats", async (req, res) => {
+  try {
+    const products = await productsCollection.find({}).toArray();
+    
+    const total = products.length;
+    const avgPrice = total > 0 
+      ? (products.reduce((sum, p) => sum + (p.price || 0), 0) / total).toFixed(2)
+      : 0;
+    
+    // Encontrar origen más popular
+    const origins = products.map(p => p.origin).filter(Boolean);
+    const popularOrigin = origins.length > 0
+      ? origins.sort((a, b) => 
+          origins.filter(o => o === b).length - origins.filter(o => o === a).length
+        )[0]
+      : "N/A";
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`✅ CoffeeHub corriendo en http://localhost:${PORT}`);
+    res.json({
+      total,
+      avgPrice,
+      popularOrigin
+    });
+  } catch (err) {
+    console.error("Error al obtener estadísticas:", err);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// ================================
+// 🚀 Iniciar servidor
+// ================================
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ CoffeeHub Backend corriendo en puerto ${PORT}`);
+    console.log(`🔗 Orígenes permitidos:`, allowedOrigins);
+  });
+}).catch(err => {
+  console.error("❌ No se pudo iniciar el servidor:", err);
+  process.exit(1);
 });
