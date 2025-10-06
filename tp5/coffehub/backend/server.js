@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 4000;
 // ================================
 // 🔗 MongoDB Connection
 // ================================
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://coffeehub_user:4r53CGzV7s0RykDr@cluster0.zapqwxx.mongodb.net/?coffeehub?retryWrites=true&w=majority&appName=Cluster0";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://coffeehub_user:coffeehub@cluster0.zapqwxx.mongodb.net/?coffeehub?retryWrites=true&w=majority&appName=Cluster0";
 
 let db;
 let productsCollection;
