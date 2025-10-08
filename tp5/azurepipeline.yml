@@ -1,5 +1,6 @@
 # ===========================================
 # COFFEEHUB CI/CD - QA y PRODUCCIÓN (Azure + MongoDB)
+# Base de datos separada por ambiente
 # ===========================================
 
 trigger:
@@ -11,17 +12,23 @@ pool:
   name: SelfHosted
 
 variables:
-  group: CoffeeHub-Secrets
-  RESOURCE_GROUP_NAME: 'TPSINGSOFT2025'
-  azureServiceConnection: 'azure-tp05-connection'
+  - group: CoffeeHub-Secrets  
+  - name: RESOURCE_GROUP_NAME
+    value: 'TPINGSOFT32025'
+  - name: azureServiceConnection
+    value: 'azure-tp05-connection'
+  - name: backendAppNameQA
+    value: 'coffehub-Backend-QA'
+  - name: frontendAppNameQA
+    value: 'coffehub-Front-QA'
+  - name: backendAppNameProd
+    value: 'coffehub-Backend-PROD'
+  - name: frontendAppNameProd
+    value: 'coffehub-Front-PROD'
   
-  backendAppNameQA: 'coffehub-Backend-QA'
-  frontendAppNameQA: 'coffehub-Front-QA'
-  backendAppNameProd: 'coffehub-Backend-PROD'
-  frontendAppNameProd: 'coffehub-Front-PROD'
-  
-  # MongoDB connection string (debe estar en Azure DevOps Variables)
-  # MONGODB_URI: 'mongodb+srv://...'
+  # Variables de MongoDB - deben estar en Azure DevOps Variable Groups
+  # MONGODB_URI_QA: 'mongodb+srv://user:pass@cluster.mongodb.net/coffeehub_qa?retryWrites=true&w=majority'
+  # MONGODB_URI_PROD: 'mongodb+srv://user:pass@cluster.mongodb.net/coffeehub_prod?retryWrites=true&w=majority'
 
 # -------------------- STAGE 1: BUILD --------------------
 stages:
@@ -34,7 +41,7 @@ stages:
       - script: |
           npm install
         displayName: 'Instalar Dependencias (Backend)'
-        workingDirectory: 'tp5/coffehub/backend'
+        workingDirectory: 'coffehub/backend'
 
       - task: PublishPipelineArtifact@1
         inputs:
@@ -76,9 +83,9 @@ stages:
                 runtimeStack: 'NODE|18-lts'
                 startUpCommand: 'npm install && npm start'
 
-            # ---- Configurar MongoDB en Backend QA ----
+            # ---- Configurar MongoDB QA en Backend ----
             - task: AzureCLI@2
-              displayName: 'Configurar MONGODB_URI en Backend QA'
+              displayName: 'Configurar MONGODB_URI_QA en Backend QA'
               inputs:
                 azureSubscription: '$(azureServiceConnection)'
                 scriptType: 'bash'
@@ -86,23 +93,13 @@ stages:
                 inlineScript: |
                   BACKEND_APP='$(backendAppNameQA)'
                   RG='$(RESOURCE_GROUP_NAME)'
-                  MONGO_URI='$(MONGODB_URI)'
-                  
-                  echo "➡️ Configurando MongoDB en $BACKEND_APP"
-                  
-                  # Validar que la variable existe
-                  if [ -z "$MONGO_URI" ]; then
-                    echo "❌ ERROR: MONGODB_URI no está definida"
-                    exit 1
-                  fi
-                  
-                  # Configurar app setting
+                  echo "➡️ Configurando MongoDB QA en $BACKEND_APP"
                   az webapp config appsettings set \
                     --name "$BACKEND_APP" \
                     --resource-group "$RG" \
-                    --settings MONGODB_URI="$MONGO_URI"
-                  
-                  echo "✅ MongoDB URI configurada correctamente"
+                    --settings \
+                      MONGODB_URI="$(MONGODB_URI_QA)" \
+                      NODE_ENV="qa"
 
             # ---- Frontend ----
             - task: DownloadPipelineArtifact@2
@@ -127,18 +124,14 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  BACKEND_URL_VAL="https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net"
+                  BACKEND_URL_VAL="https://coffeehub-back-qa-argeftdrb3dkb9du.brazilsouth-01.azurewebsites.net"
                   FRONTEND_APP='$(frontendAppNameQA)'
                   RG='$(RESOURCE_GROUP_NAME)'
-                  
                   echo "➡️ Configurando BACKEND_URL en $FRONTEND_APP"
-                  
                   az webapp config appsettings set \
                     --name "$FRONTEND_APP" \
                     --resource-group "$RG" \
                     --settings BACKEND_URL="$BACKEND_URL_VAL"
-                  
-                  echo "✅ BACKEND_URL configurada"
 
             - task: AzureCLI@2
               displayName: 'Configurar CORS en Backend QA'
@@ -147,23 +140,17 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  FRONTEND_URL_VAL="https://coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net"
+                  FRONTEND_URL_VAL="https://coffeehub-front-qa-argqggbvc3g0gkdc.brazilsouth-01.azurewebsites.net"
                   BACKEND_APP='$(backendAppNameQA)'
                   RG='$(RESOURCE_GROUP_NAME)'
-                  
                   echo "➡️ Configurando CORS para $FRONTEND_URL_VAL"
-                  
                   az webapp cors add \
                     --name "$BACKEND_APP" \
                     --resource-group "$RG" \
                     --allowed-origins "$FRONTEND_URL_VAL"
-                  
-                  echo "✅ CORS configurado"
 
 
 # -------------------- STAGE 3: DEPLOY PROD --------------------
-# Con MongoDB, QA y PROD comparten la misma base de datos
-# No necesitas sincronizar archivos
 - stage: Deploy_PROD
   displayName: "CD: Desplegar Producción + Configurar Entorno"
   dependsOn: Deploy_QA
@@ -190,9 +177,9 @@ stages:
                 runtimeStack: 'NODE|18-lts'
                 startUpCommand: 'npm install && npm start'
 
-            # ---- Configurar MongoDB en Backend PROD ----
+            # ---- Configurar MongoDB PROD en Backend ----
             - task: AzureCLI@2
-              displayName: 'Configurar MONGODB_URI en Backend PROD'
+              displayName: 'Configurar MONGODB_URI_PROD en Backend PROD'
               inputs:
                 azureSubscription: '$(azureServiceConnection)'
                 scriptType: 'bash'
@@ -200,23 +187,14 @@ stages:
                 inlineScript: |
                   BACKEND_APP='$(backendAppNameProd)'
                   RG='$(RESOURCE_GROUP_NAME)'
-                  MONGO_URI='$(MONGODB_URI)'
-                  
-                  echo "➡️ Configurando MongoDB en $BACKEND_APP"
-                  
-                  # Validar que la variable existe
-                  if [ -z "$MONGO_URI" ]; then
-                    echo "❌ ERROR: MONGODB_URI no está definida"
-                    exit 1
-                  fi
-                  
-                  # Configurar app setting
+                  echo "➡️ Configurando MongoDB PROD en $BACKEND_APP"
+                  echo "MongoDB URI PROD: $(MONGODB_URI_PROD)"  # Debug line
                   az webapp config appsettings set \
                     --name "$BACKEND_APP" \
                     --resource-group "$RG" \
-                    --settings MONGODB_URI="$MONGO_URI"
-                  
-                  echo "✅ MongoDB URI configurada correctamente"
+                    --settings \
+                      MONGODB_URI="$(MONGODB_URI_PROD)" \
+                      NODE_ENV="production"
 
             # ---- Frontend ----
             - task: DownloadPipelineArtifact@2
@@ -241,18 +219,14 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  BACKEND_URL_VAL="https://coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net"
+                  BACKEND_URL_VAL="https://coffeehub-back-prod-bzgaa5ekbed7fret.brazilsouth-01.azurewebsites.net"
                   FRONTEND_APP='$(frontendAppNameProd)'
                   RG='$(RESOURCE_GROUP_NAME)'
-                  
                   echo "➡️ Configurando BACKEND_URL en $FRONTEND_APP"
-                  
                   az webapp config appsettings set \
                     --name "$FRONTEND_APP" \
                     --resource-group "$RG" \
                     --settings BACKEND_URL="$BACKEND_URL_VAL"
-                  
-                  echo "✅ BACKEND_URL configurada"
 
             - task: AzureCLI@2
               displayName: 'Configurar CORS en Backend PROD'
@@ -261,15 +235,11 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  FRONTEND_URL_VAL="https://coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net"
+                  FRONTEND_URL_VAL="https://coffeehub-front-prod-hgh2ehb7bzchh4ft.brazilsouth-01.azurewebsites.net"
                   BACKEND_APP='$(backendAppNameProd)'
                   RG='$(RESOURCE_GROUP_NAME)'
-                  
                   echo "➡️ Configurando CORS en $BACKEND_APP"
-                  
                   az webapp cors add \
                     --name "$BACKEND_APP" \
                     --resource-group "$RG" \
                     --allowed-origins "$FRONTEND_URL_VAL"
-                  
-                  echo "✅ CORS configurado"

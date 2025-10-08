@@ -1,11 +1,29 @@
-// ☕ CoffeeHub Frontend - API URL CORREGIDA
+// ☕ CoffeeHub Frontend - API URL DINÁMICA
+// 🔧 Detectar automáticamente la URL del backend según el ambiente
 
-// 🔧 Detectar automáticamente la URL del backend
-const API_URL = window.BACKEND_URL || 
-  (window.location.hostname === 'localhost' 
-    ? 'http://localhost:4000' 
-    : 'https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net'); // Cambiar a tu URL de Azure
+function getBackendURL() {
+  // 1. Si estamos en localhost, usar backend local
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:4000';
+  }
+  
+  // 2. Si estamos en QA, usar backend de QA
+  if (window.location.hostname.includes('coffeehub-front-qa')) {
+    return 'https://coffeehub-back-qa-argeftdrb3dkb9du.brazilsouth-01.azurewebsites.net';
+  }
+  
+  // 3. Si estamos en PROD, usar backend de PROD
+  if (window.location.hostname.includes('coffeehub-front-prod')) {
+    return 'https://coffeehub-back-prod-bzgaa5ekbed7fret.brazilsouth-01.azurewebsites.net';
+  }
+  
+  // 4. Fallback por defecto (QA)
+  return 'https://coffeehub-back-qa-argeftdrb3dkb9du.brazilsouth-01.azurewebsites.net';
+}
+
+const API_URL = getBackendURL();
 console.log('🔗 API URL configurada:', API_URL);
+console.log('🌐 Hostname actual:', window.location.hostname);
 
 // Toggle del formulario
 function toggleForm() {
@@ -17,11 +35,9 @@ function toggleForm() {
 async function renderCoffees() {
   try {
     const res = await fetch(`${API_URL}/api/products`);
-    
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
-    
     const coffees = await res.json();
     const grid = document.getElementById("coffee-grid");
     
@@ -45,7 +61,7 @@ async function renderCoffees() {
     `).join("");
   } catch (error) {
     console.error('❌ Error al cargar cafés:', error);
-    document.getElementById("coffee-grid").innerHTML = 
+    document.getElementById("coffee-grid").innerHTML =
       `<div class="error">⚠️ Error al conectar con el servidor: ${error.message}</div>`;
   }
 }
@@ -54,11 +70,9 @@ async function renderCoffees() {
 async function updateStats() {
   try {
     const res = await fetch(`${API_URL}/api/stats`);
-    
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
-    
     const stats = await res.json();
     
     document.getElementById("total-coffees").textContent = stats.total || 0;
@@ -98,7 +112,6 @@ document.getElementById("coffee-form").addEventListener("submit", async (e) => {
     toggleForm();
     await renderCoffees();
     await updateStats();
-    
     alert('✅ Café agregado exitosamente!');
   } catch (error) {
     console.error('❌ Error al agregar café:', error);
