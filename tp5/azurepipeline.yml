@@ -41,7 +41,7 @@ stages:
       - script: |
           npm install
         displayName: 'Instalar Dependencias (Backend)'
-        workingDirectory: 'coffehub/backend'
+        workingDirectory: 'tp5/coffehub/backend'
 
       - task: PublishPipelineArtifact@1
         inputs:
