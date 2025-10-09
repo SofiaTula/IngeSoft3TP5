@@ -47,8 +47,8 @@ async function connectDB() {
 const allowedOrigins = [
   "http://localhost:8080",
   "http://localhost:4000",
-  "http://coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net",
-  "http://coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net",
+  "https://coffeehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net",
+  "https://coffeehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net",
 ];
 
 app.use(cors({
