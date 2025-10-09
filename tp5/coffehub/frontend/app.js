@@ -8,17 +8,17 @@ function getBackendURL() {
   }
   
   // 2. Si estamos en QA, usar backend de QA
-  if (window.location.hostname.includes('coffeehub-front-qa')) {
+  if (window.location.hostname.includes('coffehub-front-qa')) {
     return 'https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net';
   }
   
   // 3. Si estamos en PROD, usar backend de PROD
-  if (window.location.hostname.includes('coffeehub-front-prod')) {
+  if (window.location.hostname.includes('coffehub-front-prod')) {
     return 'https://coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net';
   }
   
   // 4. Fallback por defecto (QA)
-  return 'https://coffeehub-back-qa-argeftdrb3dkb9du.brazilsouth-01.azurewebsites.net';
+  return 'https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net';
 }
 
 const API_URL = getBackendURL();
