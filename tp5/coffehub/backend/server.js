@@ -51,6 +51,8 @@ const allowedOrigins = [
   "https://coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net",
 ];
 
+
+
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
