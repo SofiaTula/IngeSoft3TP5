@@ -177,6 +177,7 @@ stages:
                 package: '$(Pipeline.Workspace)/backend-source'
                 runtimeStack: 'NODE|18-lts'
                 startUpCommand: 'npm install && npm start'
+                deploymentMethod: 'zipDeploy'  # ← Agrega esta línea
 
             # ---- Configurar MongoDB PROD en Backend ----
             - task: AzureCLI@2
