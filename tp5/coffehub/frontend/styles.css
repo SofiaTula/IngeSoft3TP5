@@ -60,7 +60,8 @@ h1 {
     position: relative;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="number"] {
     width: 100%;
     padding: 15px 20px;
     border: 2px solid rgba(139, 69, 19, 0.3);
@@ -71,7 +72,8 @@ input[type="text"] {
     transition: all 0.3s ease;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus,
+input[type="number"]:focus {
     outline: none;
     border-color: #d2b48c;
     box-shadow: 0 0 20px rgba(210, 180, 140, 0.3);
@@ -82,7 +84,8 @@ input::placeholder {
     color: #a0876c;
 }
 
-.filter-select {
+.filter-select,
+select {
     padding: 15px 20px;
     border: 2px solid rgba(139, 69, 19, 0.3);
     border-radius: 25px;
@@ -93,7 +96,8 @@ input::placeholder {
     transition: all 0.3s ease;
 }
 
-.filter-select:focus {
+.filter-select:focus,
+select:focus {
     outline: none;
     border-color: #d2b48c;
     box-shadow: 0 0 20px rgba(210, 180, 140, 0.3);
@@ -109,12 +113,21 @@ input::placeholder {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
+    font-weight: 600;
 }
 
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(139, 69, 19, 0.4);
     background: linear-gradient(45deg, #a0522d, #b8651a);
+}
+
+.btn-secondary {
+    background: linear-gradient(45deg, #4a4a4a, #6a6a6a);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(45deg, #6a6a6a, #8a8a8a);
 }
 
 .coffee-grid {
@@ -169,6 +182,18 @@ input::placeholder {
     display: grid;
     gap: 8px;
     margin-bottom: 15px;
+    color: #d0d0d0;
+}
+
+.coffee-details div {
+    display: flex;
+    align-items: center;
+}
+
+.coffee-details b {
+    min-width: 110px;
+    color: #f4a460;
+    font-weight: 600;
 }
 
 .coffee-description {
@@ -179,6 +204,48 @@ input::placeholder {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 10px;
     border-left: 4px solid #d2b48c;
+    font-style: italic;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-edit,
+.btn-delete {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-edit {
+    background: linear-gradient(45deg, #2e7d32, #43a047);
+    color: white;
+}
+
+.btn-edit:hover {
+    background: linear-gradient(45deg, #43a047, #66bb6a);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+}
+
+.btn-delete {
+    background: linear-gradient(45deg, #c62828, #e53935);
+    color: white;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(45deg, #e53935, #ef5350);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.4);
 }
 
 .add-form {
@@ -197,6 +264,11 @@ input::placeholder {
     text-align: center;
 }
 
+#coffee-form {
+    display: grid;
+    gap: 15px;
+}
+
 .form-group {
     display: flex;
     flex-direction: column;
@@ -210,7 +282,10 @@ input::placeholder {
 
 .form-group input,
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+input,
+select,
+textarea {
     padding: 12px 15px;
     border: 2px solid rgba(139, 69, 19, 0.3);
     border-radius: 10px;
@@ -218,20 +293,30 @@ input::placeholder {
     color: #f4f1eb;
     font-size: 14px;
     transition: all 0.3s ease;
+    font-family: inherit;
 }
 
-.form-group textarea {
+textarea {
     resize: vertical;
-    min-height: 80px;
-    grid-column: 1 / -1;
+    min-height: 100px;
 }
 
 .form-group input:focus,
 .form-group select:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+input:focus,
+select:focus,
+textarea:focus {
     outline: none;
     border-color: #d2b48c;
     box-shadow: 0 0 10px rgba(210, 180, 140, 0.2);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 10px;
 }
 
 .stats {
@@ -248,6 +333,11 @@ input::placeholder {
     text-align: center;
     border: 1px solid rgba(139, 69, 19, 0.3);
     backdrop-filter: blur(10px);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
 }
 
 .stat-number {
@@ -263,16 +353,25 @@ input::placeholder {
     margin-top: 5px;
 }
 
-.loading {
+.loading,
+.no-results,
+.error {
     text-align: center;
     padding: 40px;
     color: #d2b48c;
     font-size: 1.2rem;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    border: 1px solid rgba(139, 69, 19, 0.3);
+}
+
+.error {
+    color: #ef5350;
+    border-color: rgba(198, 40, 40, 0.5);
+    background: rgba(198, 40, 40, 0.1);
 }
 
 .no-results {
-    text-align: center;
-    padding: 40px;
     color: #a0876c;
     font-style: italic;
 }
@@ -297,6 +396,10 @@ input::placeholder {
         font-size: 2.5rem;
     }
 
+    .subtitle {
+        font-size: 1rem;
+    }
+
     .controls {
         flex-direction: column;
         align-items: stretch;
@@ -310,5 +413,20 @@ input::placeholder {
     .coffee-grid {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+
+    .card-actions {
+        flex-direction: column;
+    }
+
+    .form-buttons {
+        flex-direction: column;
+    }
+
+    .btn,
+    .btn-secondary,
+    .btn-edit,
+    .btn-delete {
+        width: 100%;
     }
 }
