@@ -46,7 +46,7 @@ stages:
           echo "🧪 Ejecutando tests unitarios con mocks..."
           npm run test:ci
         displayName: '🧪 Tests Unitarios'
-        workingDirectory: 'tp5coffehub/backend'
+        workingDirectory: 'tp5/coffehub/backend'
         continueOnError: false
 
       # ---- Publicar Resultados de Tests ----
