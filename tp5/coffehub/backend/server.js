@@ -19,22 +19,23 @@ if (!MONGODB_URI) {
 
 let db;
 let productsCollection;
+let mongoClient;
 
 async function connectDB() {
-  try {
-    const client = new MongoClient(MONGODB_URI);
-    await client.connect();
+ try {
+    mongoClient = new MongoClient(MONGODB_URI); // ← CAMBIAR ESTA LÍNEA
+    await mongoClient.connect();
     
     // El nombre de la base de datos viene en la URI
     const dbName = new URL(MONGODB_URI).pathname.substring(1).split('?')[0];
-    db = client.db(dbName);
+    db = mongoClient.db(dbName);
     productsCollection = db.collection("products");
     
-    console.log('✅ Conectado a MongoDB Atlas - Base de datos: ${dbName}');
+    console.log(`✅ Conectado a MongoDB Atlas - Base de datos: ${dbName}`);
   } catch (error) {
     console.error("❌ Error conectando a MongoDB:", error);
     process.exit(1);
-  }
+}
 }
 
 // ================================
@@ -232,16 +233,34 @@ app.get("/api/stats", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
-
 // ================================
 // 🚀 Iniciar servidor
 // ================================
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log('✅ CoffeeHub Backend corriendo en puerto ${PORT}');
-    console.log('🔗 Orígenes permitidos:', allowedOrigins);
-  });
-}).catch(err => {
-  console.error("❌ No se pudo iniciar el servidor:", err);
-  process.exit(1);
-});
+let server;
+
+// Función para inicializar la app
+async function initializeApp() {
+  try {
+    await connectDB();
+    
+    // Solo iniciar el servidor si NO estamos en modo test
+    if (process.env.NODE_ENV !== 'test') {
+      server = app.listen(PORT, () => {
+        console.log(`✅ CoffeeHub Backend corriendo en puerto ${PORT}`);
+        console.log('🔗 Orígenes permitidos:', allowedOrigins);
+      });
+    }
+  } catch (err) {
+    console.error("❌ No se pudo iniciar el servidor:", err);
+    process.exit(1);
+  }
+}
+
+// Inicializar solo si no estamos en tests
+if (process.env.NODE_ENV !== 'test') {
+  initializeApp();
+}
+
+// Exportar app, server y la función de inicialización
+export default app;
+export { server, initializeApp, db, productsCollection, mongoClient };
