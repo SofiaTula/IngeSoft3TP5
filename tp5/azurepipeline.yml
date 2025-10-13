@@ -39,14 +39,14 @@ stages:
           echo "📦 Instalando dependencias del backend..."
           npm install
         displayName: '📦 Instalar Dependencias Backend'
-        workingDirectory: 'coffehub/backend'
+        workingDirectory: 'tp5/coffehub/backend'
 
       # ---- Ejecutar Tests Unitarios ----
       - script: |
           echo "🧪 Ejecutando tests unitarios con mocks..."
           npm run test:ci
         displayName: '🧪 Tests Unitarios'
-        workingDirectory: 'coffehub/backend'
+        workingDirectory: 'tp5coffehub/backend'
         continueOnError: false
 
       # ---- Publicar Resultados de Tests ----
@@ -85,7 +85,7 @@ stages:
           echo "📦 Instalando dependencias del frontend..."
           npm install
         displayName: '📦 Instalar Dependencias Frontend'
-        workingDirectory: 'coffehub/frontend'
+        workingDirectory: 'tp5/coffehub/frontend'
 
       # ---- Tests del Frontend (si los tienes) ----
       # - script: |
