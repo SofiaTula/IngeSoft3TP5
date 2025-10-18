@@ -324,7 +324,7 @@ describe('CoffeeHub Frontend', () => {
       
       const result = getBackendURL();
       
-      expect(result).toContain('coffehub-Backend-QA');
+      expect(result).toContain('coffehub-backend-qa');
     });
   });
 
