@@ -13,44 +13,151 @@ const PORT = process.env.PORT || 4000;
 // ================================
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// ✅ SOLUCIÓN: No hacer exit inmediato si estamos en test
 if (!MONGODB_URI) {
   console.error("❌ ERROR: MONGODB_URI no está definida");
-  if (process.env.NODE_ENV !== 'test') {
-    process.exit(1);
-  }
+  process.exit(1);
 }
 
 let db;
 let productsCollection;
 let mongoClient;
 
-// ✅ SOLUCIÓN: Retornar booleano y no hacer exit en tests
 async function connectDB() {
   try {
     mongoClient = new MongoClient(MONGODB_URI);
     await mongoClient.connect();
     
-    // El nombre de la base de datos viene en la URI
     const dbName = new URL(MONGODB_URI).pathname.substring(1).split('?')[0];
     db = mongoClient.db(dbName);
     productsCollection = db.collection("products");
     
     console.log(`✅ Conectado a MongoDB Atlas - Base de datos: ${dbName}`);
-    return true; // ✅ Retornar éxito
   } catch (error) {
     console.error("❌ Error conectando a MongoDB:", error);
-    
-    // ✅ Solo hacer exit si NO estamos en test
-    if (process.env.NODE_ENV !== 'test') {
-      process.exit(1);
-    }
-    
-    // ✅ En tests, lanzar el error para que Jest lo maneje
-    throw error;
+    process.exit(1);
   }
 }
 
+// ================================
+// 🛡️ FUNCIONES DE VALIDACIÓN
+// ================================
+
+/**
+ * Valida los datos de un producto
+ * @param {Object} productData - Datos del producto
+ * @param {boolean} isUpdate - Si es una actualización (campos opcionales)
+ * @returns {Object} { valid: boolean, errors: string[] }
+ */
+function validateProduct(productData, isUpdate = false) {
+  const errors = [];
+
+  // Validar nombre
+  if (!isUpdate || productData.name !== undefined) {
+    if (!productData.name || typeof productData.name !== 'string') {
+      errors.push('Name is required and must be a string');
+    } else if (productData.name.trim() === '') {
+      errors.push('Name cannot be empty or only whitespace');
+    } else if (productData.name.length > 255) {
+      errors.push('Name cannot exceed 255 characters');
+    }
+  }
+
+  // Validar precio
+  if (!isUpdate || productData.price !== undefined) {
+    const price = parseFloat(productData.price);
+    if (isNaN(price)) {
+      errors.push('Price must be a valid number');
+    } else if (price < 0) {
+      errors.push('Price cannot be negative');
+    } else if (price > 999999.99) {
+      errors.push('Price cannot exceed 999,999.99');
+    }
+  }
+
+  // Validar rating (si existe)
+  if (productData.rating !== undefined && productData.rating !== null) {
+    const rating = parseFloat(productData.rating);
+    if (isNaN(rating)) {
+      errors.push('Rating must be a valid number');
+    } else if (rating < 0 || rating > 5) {
+      errors.push('Rating must be between 0 and 5');
+    }
+  }
+
+  // Validar origin
+  if (!isUpdate || productData.origin !== undefined) {
+    if (productData.origin && typeof productData.origin !== 'string') {
+      errors.push('Origin must be a string');
+    }
+  }
+
+  // Validar type
+  if (!isUpdate || productData.type !== undefined) {
+    if (productData.type && typeof productData.type !== 'string') {
+      errors.push('Type must be a string');
+    }
+  }
+
+  // Validar roast
+  if (!isUpdate || productData.roast !== undefined) {
+    if (productData.roast && typeof productData.roast !== 'string') {
+      errors.push('Roast must be a string');
+    }
+  }
+
+  // Validar description
+  if (productData.description !== undefined && productData.description !== null) {
+    if (typeof productData.description !== 'string') {
+      errors.push('Description must be a string');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Sanitiza los datos de un producto
+ * @param {Object} productData - Datos del producto
+ * @returns {Object} Datos sanitizados
+ */
+function sanitizeProduct(productData) {
+  const sanitized = {};
+
+  if (productData.name !== undefined) {
+    sanitized.name = String(productData.name).trim();
+  }
+
+  if (productData.origin !== undefined) {
+    sanitized.origin = String(productData.origin).trim();
+  }
+
+  if (productData.type !== undefined) {
+    sanitized.type = String(productData.type).trim();
+  }
+
+  if (productData.price !== undefined) {
+    sanitized.price = parseFloat(productData.price);
+  }
+
+  if (productData.roast !== undefined) {
+    sanitized.roast = String(productData.roast).trim();
+  }
+
+  if (productData.rating !== undefined && productData.rating !== null) {
+    sanitized.rating = parseFloat(productData.rating);
+  }
+
+  if (productData.description !== undefined) {
+    sanitized.description = productData.description 
+      ? String(productData.description).trim() 
+      : "Sin descripción";
+  }
+
+  return sanitized;
+}
 // ================================
 // 🌐 CORS
 // ================================
@@ -125,19 +232,30 @@ app.get("/api/products/:id", async (req, res) => {
   }
 });
 
-// POST agregar producto
+// POST agregar producto (CON VALIDACIÓN)
 app.post("/api/products", async (req, res) => {
-  const { name, origin, type, price, roast, rating, description } = req.body;
-  
   try {
+    // 1. Sanitizar datos
+    const sanitized = sanitizeProduct(req.body);
+    
+    // 2. Validar datos
+    const validation = validateProduct(sanitized, false);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: "Datos inválidos",
+        details: validation.errors 
+      });
+    }
+    
+    // 3. Crear producto
     const newProduct = {
-      name,
-      origin,
-      type,
-      price: parseFloat(price),
-      roast,
-      rating: parseFloat(rating),
-      description: description || "Sin descripción",
+      name: sanitized.name,
+      origin: sanitized.origin || "Desconocido",
+      type: sanitized.type || "Desconocido",
+      price: sanitized.price,
+      roast: sanitized.roast || "Medium",
+      rating: sanitized.rating || 0,
+      description: sanitized.description || "Sin descripción",
       createdAt: new Date()
     };
     
@@ -152,24 +270,30 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
-// PUT actualizar producto
+// PUT actualizar producto (CON VALIDACIÓN)
 app.put("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, origin, type, price, roast, rating, description } = req.body;
     
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: "ID inválido" });
     }
     
+    // 1. Sanitizar datos
+    const sanitized = sanitizeProduct(req.body);
+    
+    // 2. Validar datos (modo actualización)
+    const validation = validateProduct(sanitized, true);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: "Datos inválidos",
+        details: validation.errors 
+      });
+    }
+    
+    // 3. Preparar datos de actualización
     const updateData = {
-      name,
-      origin,
-      type,
-      price: parseFloat(price),
-      roast,
-      rating: parseFloat(rating),
-      description: description || "Sin descripción",
+      ...sanitized,
       updatedAt: new Date()
     };
     
@@ -228,7 +352,6 @@ app.get("/api/stats", async (req, res) => {
       ? (products.reduce((sum, p) => sum + (p.price || 0), 0) / total).toFixed(2)
       : 0;
     
-    // Encontrar origen más popular
     const origins = products.map(p => p.origin).filter(Boolean);
     const popularOrigin = origins.length > 0
       ? origins.sort((a, b) => 
@@ -252,42 +375,25 @@ app.get("/api/stats", async (req, res) => {
 // ================================
 let server;
 
-// ✅ SOLUCIÓN: Función mejorada de inicialización
 async function initializeApp() {
   try {
     await connectDB();
-    console.log('✅ Base de datos inicializada correctamente');
     
-    // Solo iniciar el servidor si NO estamos en modo test
     if (process.env.NODE_ENV !== 'test') {
       server = app.listen(PORT, () => {
         console.log(`✅ CoffeeHub Backend corriendo en puerto ${PORT}`);
         console.log('🔗 Orígenes permitidos:', allowedOrigins);
       });
     }
-    
-    return true; // ✅ Retornar éxito
   } catch (err) {
-    console.error("❌ No se pudo iniciar la aplicación:", err);
-    
-    // ✅ Solo exit si no estamos en test
-    if (process.env.NODE_ENV !== 'test') {
-      process.exit(1);
-    }
-    
-    // ✅ En tests, lanzar error para que Jest lo maneje
-    throw err;
+    console.error("❌ No se pudo iniciar el servidor:", err);
+    process.exit(1);
   }
 }
 
-// Inicializar solo si no estamos en tests
 if (process.env.NODE_ENV !== 'test') {
-  initializeApp().catch(err => {
-    console.error('❌ Error fatal al inicializar:', err);
-    process.exit(1);
-  });
+  initializeApp();
 }
 
-// Exportar app, server y la función de inicialización
 export default app;
 export { server, initializeApp, db, productsCollection, mongoClient };
