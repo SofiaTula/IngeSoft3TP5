@@ -98,11 +98,11 @@ function getBackendURL() {
     return 'http://localhost:4000';
   }
   
-  if (hostname.includes('coffeehub-front-qa')) {
+  if (hostname.includes('coffehub-front-qa')) {
     return 'https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net';
   }
   
-  if (hostname.includes('coffeehub-front-prod')) {
+  if (hostname.includes('coffehub-front-prod')) {
     return 'https://coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net';
   }
   
@@ -300,21 +300,21 @@ describe('CoffeeHub Frontend', () => {
     test('debe retornar URL de QA para ambiente QA', () => {
       // ✅ SOLUCIÓN: Reemplazar completamente el objeto location
       delete global.window.location;
-      global.window.location = { hostname: 'coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net' };
+      global.window.location = { hostname: 'coffehub-front-qa-test.azurewebsites.net' };
       
       const result = getBackendURL();
       
-      expect(result).toContain('coffeehub-back-qa');
+      expect(result).toContain('coffehub-backend-qa');
     });
 
     test('debe retornar URL de PROD para ambiente PROD', () => {
       // ✅ Reemplazar el objeto location
       delete global.window.location;
-      global.window.location = { hostname: 'coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net' };
+      global.window.location = { hostname: 'coffehub-front-prod-test.azurewebsites.net' };
       
       const result = getBackendURL();
       
-      expect(result).toContain('coffehub-Backend-PROD');
+      expect(result).toContain('coffehub-backend-prod');
     });
 
     test('debe usar fallback para hostname desconocido', () => {
