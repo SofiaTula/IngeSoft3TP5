@@ -166,7 +166,7 @@ stages:
                     --name "$BACKEND_APP" \
                     --resource-group "$RG" \
                     --settings \
-                      MONGODB_URI="$(MONGODB_URI_QA)" \
+                      MONGODB_URI="$(MONGO_URI_QA)" \
                       NODE_ENV="qa"
 
             # ---- Frontend QA ----
@@ -287,7 +287,7 @@ stages:
                     --name "$BACKEND_APP" \
                     --resource-group "$RG" \
                     --settings \
-                      MONGODB_URI="$(MONGODB_URI_PROD)" \
+                      MONGODB_URI="$(MONGO_URI_PROD)" \
                       NODE_ENV="production"
 
             # ---- Configurar CORS PROD PRIMERO ----
