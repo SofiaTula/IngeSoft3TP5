@@ -192,7 +192,7 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  BACKEND_URL_VAL="https://coffeehub-back-qa-argeftdrb3dkb9du.brazilsouth-01.azurewebsites.net"
+                  BACKEND_URL_VAL="coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net"
                   FRONTEND_APP='$(frontendAppNameQA)'
                   RG='$(RESOURCE_GROUP_NAME)'
                   echo "➡️ Configurando BACKEND_URL en $FRONTEND_APP"
@@ -209,7 +209,7 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  FRONTEND_URL_VAL="https://coffeehub-front-qa-argqggbvc3g0gkdc.brazilsouth-01.azurewebsites.net"
+                  FRONTEND_URL_VAL="coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net"
                   BACKEND_APP='$(backendAppNameQA)'
                   RG='$(RESOURCE_GROUP_NAME)'
                   echo "➡️ Configurando CORS para $FRONTEND_URL_VAL"
@@ -222,7 +222,7 @@ stages:
             - script: |
                 echo "🔍 Ejecutando Smoke Tests en QA..."
                 sleep 30
-                BACKEND_URL="https://coffeehub-back-qa-argeftdrb3dkb9du.brazilsouth-01.azurewebsites.net"
+                BACKEND_URL="coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net"
                 
                 echo "Testing /api/health..."
                 response=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/health")
@@ -298,7 +298,7 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  FRONTEND_URL_VAL="https://coffeehub-front-prod-hgh2ehb7bzchh4ft.brazilsouth-01.azurewebsites.net"
+                  FRONTEND_URL_VAL="coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net"
                   BACKEND_APP='$(backendAppNameProd)'
                   RG='$(RESOURCE_GROUP_NAME)'
                   echo "➡️ Configurando CORS en $BACKEND_APP"
@@ -330,7 +330,7 @@ stages:
                 scriptType: 'bash'
                 scriptLocation: 'inlineScript'
                 inlineScript: |
-                  BACKEND_URL_VAL="https://coffeehub-back-prod-bzgaa5ekbed7fret.brazilsouth-01.azurewebsites.net"
+                  BACKEND_URL_VAL="coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net"
                   FRONTEND_APP='$(frontendAppNameProd)'
                   RG='$(RESOURCE_GROUP_NAME)'
                   echo "➡️ Configurando BACKEND_URL en $FRONTEND_APP"
@@ -343,7 +343,7 @@ stages:
             - script: |
                 echo "🔍 Ejecutando Smoke Tests en PROD..."
                 sleep 60
-                BACKEND_URL="https://coffeehub-back-prod-bzgaa5ekbed7fret.brazilsouth-01.azurewebsites.net"
+                BACKEND_URL="coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net"
                 MAX_RETRIES=5
                 RETRY_COUNT=0
                 
