@@ -14,17 +14,17 @@ pool:
 variables:
   - group: CoffeeHub-Secrets  
   - name: RESOURCE_GROUP_NAME
-    value: 'TPS-INGE-2025'
+    value: 'TPINGSOFT32025'
   - name: azureServiceConnection
     value: 'azure-tp05-connection'
   - name: backendAppNameQA
-    value: 'Coffeehub-Back-QA'
+    value: 'Coffeehub-Backend-QA'
   - name: frontendAppNameQA
     value: 'Coffeehub-Front-QA'
   - name: backendAppNameProd
-    value: 'Coffeehub-Back-Prod'
+    value: 'Coffeehub-Backend-PROD'
   - name: frontendAppNameProd
-    value: 'Coffeehub-Front-Prod'
+    value: 'Coffeehub-Front-PROD'
 
 # ==================== STAGE 1: BUILD Y TESTS ====================
 stages:
