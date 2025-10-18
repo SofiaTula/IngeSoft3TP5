@@ -7,17 +7,11 @@ describe('🧪 Tests Unitarios - CoffeeHub API', () => {
   // ⚠️ IMPORTANTE: Esperar a que MongoDB se conecte antes de los tests
   beforeAll(async () => {
     await initializeApp();
-  });
+  }, 60000); // ✅ Aumentar timeout a 60 segundos
 
   // ⚠️ IMPORTANTE: Cerrar conexiones después de los tests
   afterAll(async () => {
-    // Cerrar conexión de MongoDB
-    if (mongoClient) {
-      await mongoClient.close();
-      console.log('✅ Conexión de MongoDB cerrada');
-    }
-    
-    // Cerrar servidor si está corriendo
+    // Cerrar servidor primero si está corriendo
     if (server) {
       await new Promise((resolve) => {
         server.close(() => {
@@ -26,7 +20,13 @@ describe('🧪 Tests Unitarios - CoffeeHub API', () => {
         });
       });
     }
-  });
+    
+    // Luego cerrar conexión de MongoDB
+    if (mongoClient) {
+      await mongoClient.close();
+      console.log('✅ Conexión de MongoDB cerrada');
+    }
+  }, 60000); // ✅ Aumentar timeout para cleanup
 
   describe('GET /api/health', () => {
     it('✅ Debe retornar estado OK del servidor', async () => {
