@@ -101,7 +101,7 @@ stages:
         inputs:
           testResultsFormat: 'JUnit'
           testResultsFiles: '**/junit.xml'
-          searchFolder: 'coffehub/frontend'
+          searchFolder: 'tp5/coffehub/frontend'
           mergeTestResults: true
           failTaskOnFailedTests: true
           testRunTitle: 'Frontend Tests'
@@ -118,7 +118,7 @@ stages:
 
       - task: PublishPipelineArtifact@1
         inputs:
-          targetPath: 'coffehub/frontend'
+          targetPath: 'tp5/coffehub/frontend'
           artifact: 'frontend-code'
         displayName: "📦 Publicar Código Frontend"
         condition: succeeded()
