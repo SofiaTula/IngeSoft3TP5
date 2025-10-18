@@ -1,1 +1,488 @@
-                response=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/health")
+# ===========================================
+# COFFEEHUB CI/CD - QA y PRODUCCIÓN (Azure + MongoDB)
+# Con Tests Automáticos Integrados
+# ===========================================
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: SelfHosted
+
+variables:
+  - group: CoffeeHub-Secrets  
+  - name: RESOURCE_GROUP_NAME
+    value: 'TPINGSOFT32025'
+  - name: azureServiceConnection
+    value: 'azure-tp05-connection'
+  - name: backendAppNameQA
+    value: 'coffehub-Backend-QA'
+  - name: frontendAppNameQA
+    value: 'coffehub-Front-QA'
+  - name: backendAppNameProd
+    value: 'coffehub-Backend-PROD'
+  - name: frontendAppNameProd
+    value: 'coffehub-Front-PROD'
+
+# ==================== STAGE 1: BUILD Y TESTS ====================
+stages:
+- stage: Build_And_Test
+  displayName: "CI: Instalar, Probar y Empaquetar"
+  jobs:
+  - job: BuildAndTestBackend
+    displayName: "🔨 Build + Tests Backend"
+    steps:
+      # ---- Instalar dependencias ----
+      - script: |
+          echo "📦 Instalando dependencias del backend..."
+          npm install
+        displayName: '📦 Instalar Dependencias Backend'
+        workingDirectory: 'tp5/coffehub/backend'
+
+      # ---- Ejecutar Tests Unitarios ----
+      - script: |
+          echo "🧪 Ejecutando tests unitarios con mocks..."
+          npm run test:ci
+        displayName: '🧪 Tests Unitarios'
+        workingDirectory: 'tp5/coffehub/backend'
+        continueOnError: false
+
+      # ---- Publicar Resultados de Tests ----
+      - task: PublishTestResults@2
+        displayName: '📋 Publicar Resultados de Tests'
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/junit.xml'
+          searchFolder: 'tp5/coffehub/backend'
+          mergeTestResults: true
+          failTaskOnFailedTests: true
+          testRunTitle: 'Backend Tests'
+        condition: succeededOrFailed()
+
+      # ---- Publicar Coverage ----
+      - task: PublishCodeCoverageResults@1
+        displayName: '📊 Publicar Code Coverage'
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: 'tp5/coffehub/backend/coverage/cobertura-coverage.xml'
+          reportDirectory: 'tp5/coffehub/backend/coverage'
+        condition: succeededOrFailed()
+
+      # ---- Publicar Artefacto Backend ----
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: 'tp5/coffehub/backend'
+          artifact: 'backend-code'
+        displayName: "📦 Publicar Código Backend"
+        condition: succeeded()
+
+  - job: BuildFrontend
+    displayName: "🔨 Build Frontend"
+    steps:
+      - script: |
+          echo "📦 Instalando dependencias del frontend..."
+          npm install
+        displayName: '📦 Instalar Dependencias Frontend'
+        workingDirectory: 'tp5/coffehub/frontend'
+
+      # ---- Tests del Frontend ----
+      - script: |
+          echo "🧪 Ejecutando tests del frontend..."
+          npm run test:ci
+        displayName: '🧪 Tests Frontend'
+        workingDirectory: 'tp5/coffehub/frontend'
+        continueOnError: false
+
+      # ---- Publicar Resultados de Tests Frontend ----
+      - task: PublishTestResults@2
+        displayName: '📋 Publicar Resultados Tests Frontend'
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/junit.xml'
+          searchFolder: 'tp5/coffehub/frontend'
+          mergeTestResults: true
+          failTaskOnFailedTests: true
+          testRunTitle: 'Frontend Tests'
+        condition: succeededOrFailed()
+
+      # ---- Publicar Coverage Frontend ----
+      - task: PublishCodeCoverageResults@1
+        displayName: '📊 Publicar Code Coverage Frontend'
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: 'tp5/coffehub/frontend/coverage/cobertura-coverage.xml'
+          reportDirectory: 'tp5/coffehub/frontend/coverage'
+        condition: succeededOrFailed()
+
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: 'tp5/coffehub/frontend'
+          artifact: 'frontend-code'
+        displayName: "📦 Publicar Código Frontend"
+        condition: succeeded()
+
+
+# ==================== STAGE 2: DEPLOY QA ====================
+- stage: Deploy_QA
+  displayName: "CD: Desplegar QA + Smoke Tests"
+  dependsOn: Build_And_Test
+  condition: succeeded()
+  jobs:
+  - deployment: DeployQA
+    environment: 'QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            # ---- Backend QA ----
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                artifact: 'backend-code'
+                path: '$(Pipeline.Workspace)/backend-source' 
+
+            - task: AzureWebApp@1
+              displayName: "🚀 Deploy Backend QA"
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                appName: '$(backendAppNameQA)'
+                package: '$(Pipeline.Workspace)/backend-source'
+                runtimeStack: 'NODE|18-lts'
+                startUpCommand: 'npm install && npm start'
+
+            # ---- Configurar MongoDB QA (NOMBRE CORREGIDO) ----
+            - task: AzureCLI@2
+              displayName: '⚙️ Configurar Variables Backend QA'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  BACKEND_APP='$(backendAppNameQA)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  
+                  # Verificar que la variable existe
+                  if [ -z "$(MONGO_URI_QA)" ]; then
+                    echo "❌ ERROR: MONGO_URI_QA está vacía!"
+                    echo "⚠️ Verifica que existe en el Variable Group 'CoffeeHub-Secrets'"
+                    exit 1
+                  fi
+                  
+                  echo "➡️ Configurando variables en $BACKEND_APP"
+                  az webapp config appsettings set \
+                    --name "$BACKEND_APP" \
+                    --resource-group "$RG" \
+                    --settings \
+                      MONGODB_URI="$(MONGO_URI_QA)" \
+                      NODE_ENV="qa"
+                  
+                  echo "✅ Variables configuradas correctamente"
+
+            # ---- Reiniciar Backend QA para aplicar cambios ----
+            - task: AzureCLI@2
+              displayName: '🔄 Reiniciar Backend QA'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  BACKEND_APP='$(backendAppNameQA)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  echo "🔄 Reiniciando $BACKEND_APP..."
+                  az webapp restart --name "$BACKEND_APP" --resource-group "$RG"
+                  echo "⏳ Esperando 30 segundos para que la app inicie..."
+                  sleep 30
+                  echo "✅ Reinicio completado"
+
+            # ---- Frontend QA ----
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                artifact: 'frontend-code'
+                path: '$(Pipeline.Workspace)/frontend-source'
+
+            - task: AzureWebApp@1
+              displayName: "🚀 Deploy Frontend QA"
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                appName: '$(frontendAppNameQA)'
+                package: '$(Pipeline.Workspace)/frontend-source'
+                runtimeStack: 'NODE|18-lts'
+                startUpCommand: 'npm install && npm start'
+
+            # ---- Configurar Frontend QA ----
+            - task: AzureCLI@2
+              displayName: '⚙️ Configurar Variables Frontend QA'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  BACKEND_URL_VAL="https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net"
+                  FRONTEND_APP='$(frontendAppNameQA)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  echo "➡️ Configurando BACKEND_URL en $FRONTEND_APP"
+                  az webapp config appsettings set \
+                    --name "$FRONTEND_APP" \
+                    --resource-group "$RG" \
+                    --settings BACKEND_URL="$BACKEND_URL_VAL"
+
+            # ---- Configurar CORS QA ----
+            - task: AzureCLI@2
+              displayName: '⚙️ Configurar CORS en Backend QA'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  FRONTEND_URL_VAL="https://coffehub-front-qa-a5cvgbfkhbf7huep.brazilsouth-01.azurewebsites.net"
+                  BACKEND_APP='$(backendAppNameQA)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  echo "➡️ Configurando CORS para $FRONTEND_URL_VAL"
+                  az webapp cors add \
+                    --name "$BACKEND_APP" \
+                    --resource-group "$RG" \
+                    --allowed-origins "$FRONTEND_URL_VAL"
+
+            # ---- Smoke Tests QA (MEJORADO CON RETRY) ----
+            - script: |
+                echo "🔍 Ejecutando Smoke Tests en QA..."
+                echo "⏳ Esperando 60 segundos adicionales para que el backend inicie completamente..."
+                sleep 60
+                
+                BACKEND_URL="https://coffehub-backend-qa-g7d7aehuf3avgucz.brazilsouth-01.azurewebsites.net"
+                MAX_RETRIES=5
+                RETRY_COUNT=0
+                
+                echo ""
+                echo "Testing /api/health..."
+                while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+                  echo "🔄 Intento $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+                  
+                  response=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/api/health" || echo -e "\n000")
+                  http_code=$(echo "$response" | tail -n1)
+                  body=$(echo "$response" | head -n-1)
+                  
+                  echo "📡 Response Code: $http_code"
+                  echo "📄 Response Body: $body"
+                  
+                  if [ "$http_code" -eq 200 ]; then
+                    echo "✅ Health check passed!"
+                    break
+                  else
+                    echo "⚠️ Status: $http_code (esperado: 200)"
+                    RETRY_COUNT=$((RETRY_COUNT + 1))
+                    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                      echo "⏳ Esperando 15 segundos antes de reintentar..."
+                      sleep 15
+                    fi
+                  fi
+                done
+                
+                if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                  echo "❌ Health check falló después de $MAX_RETRIES intentos"
+                  exit 1
+                fi
+                
+                echo ""
+                echo "Testing /api/products..."
+                response=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/api/products")
+                http_code=$(echo "$response" | tail -n1)
+                body=$(echo "$response" | head -n-1)
+                
+                echo "📡 Response Code: $http_code"
+                echo "📄 Response Body: $body"
+                
+                if [ "$http_code" -eq 200 ]; then
+                  echo "✅ Products endpoint passed!"
+                else
+                  echo "❌ Products endpoint failed! Status: $http_code"
+                  exit 1
+                fi
+                
+                echo ""
+                echo "🎉 Todos los smoke tests de QA pasaron exitosamente!"
+              displayName: '🔍 Smoke Tests QA (Con Retry)'
+              continueOnError: false
+
+
+# ==================== STAGE 3: DEPLOY PROD ====================
+- stage: Deploy_PROD
+  displayName: "CD: Desplegar Producción + Verificación"
+  dependsOn: Deploy_QA
+  condition: succeeded()
+  jobs:
+  - deployment: DeployPROD
+    environment: 'PROD'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            # ---- Backend PROD ----
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                artifact: 'backend-code'
+                path: '$(Pipeline.Workspace)/backend-source'
+
+            - task: AzureWebApp@1
+              displayName: "🚀 Deploy Backend PROD"
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                appName: '$(backendAppNameProd)'
+                package: '$(Pipeline.Workspace)/backend-source'
+                runtimeStack: 'NODE|18-lts'
+                startUpCommand: 'npm install && npm start'
+
+            # ---- Configurar MongoDB PROD (NOMBRE CORREGIDO) ----
+            - task: AzureCLI@2
+              displayName: '⚙️ Configurar Variables Backend PROD'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  BACKEND_APP='$(backendAppNameProd)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  
+                  # Verificar que la variable existe
+                  if [ -z "$(MONGO_URI_PROD)" ]; then
+                    echo "❌ ERROR: MONGO_URI_PROD está vacía!"
+                    echo "⚠️ Verifica que existe en el Variable Group 'CoffeeHub-Secrets'"
+                    exit 1
+                  fi
+                  
+                  echo "➡️ Configurando variables en $BACKEND_APP"
+                  az webapp config appsettings set \
+                    --name "$BACKEND_APP" \
+                    --resource-group "$RG" \
+                    --settings \
+                      MONGODB_URI="$(MONGO_URI_PROD)" \
+                      NODE_ENV="production"
+                  
+                  echo "✅ Variables configuradas correctamente"
+
+            # ---- Reiniciar Backend PROD ----
+            - task: AzureCLI@2
+              displayName: '🔄 Reiniciar Backend PROD'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  BACKEND_APP='$(backendAppNameProd)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  echo "🔄 Reiniciando $BACKEND_APP..."
+                  az webapp restart --name "$BACKEND_APP" --resource-group "$RG"
+                  echo "⏳ Esperando 30 segundos para que la app inicie..."
+                  sleep 30
+                  echo "✅ Reinicio completado"
+
+            # ---- Configurar CORS PROD ----
+            - task: AzureCLI@2
+              displayName: '⚙️ Configurar CORS en Backend PROD'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  FRONTEND_URL_VAL="https://coffehub-front-prod-fvhhcggshqf8hygq.brazilsouth-01.azurewebsites.net"
+                  BACKEND_APP='$(backendAppNameProd)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  echo "➡️ Configurando CORS en $BACKEND_APP"
+                  az webapp cors add \
+                    --name "$BACKEND_APP" \
+                    --resource-group "$RG" \
+                    --allowed-origins "$FRONTEND_URL_VAL"
+
+            # ---- Frontend PROD ----
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                artifact: 'frontend-code'
+                path: '$(Pipeline.Workspace)/frontend-source'
+
+            - task: AzureWebApp@1
+              displayName: "🚀 Deploy Frontend PROD"
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                appName: '$(frontendAppNameProd)'
+                package: '$(Pipeline.Workspace)/frontend-source'
+                runtimeStack: 'NODE|18-lts'
+                startUpCommand: 'npm install && npm start'
+
+            # ---- Configurar Frontend PROD ----
+            - task: AzureCLI@2
+              displayName: '⚙️ Configurar Variables Frontend PROD'
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  BACKEND_URL_VAL="https://coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net"
+                  FRONTEND_APP='$(frontendAppNameProd)'
+                  RG='$(RESOURCE_GROUP_NAME)'
+                  echo "➡️ Configurando BACKEND_URL en $FRONTEND_APP"
+                  az webapp config appsettings set \
+                    --name "$FRONTEND_APP" \
+                    --resource-group "$RG" \
+                    --settings BACKEND_URL="$BACKEND_URL_VAL"
+
+            # ---- Smoke Tests PROD (CON RETRY Y ESPERA) ----
+            - script: |
+                echo "🔍 Ejecutando Smoke Tests en PROD..."
+                echo "⏳ Esperando 60 segundos adicionales para que el backend inicie completamente..."
+                sleep 60
+                
+                BACKEND_URL="https://coffehub-backend-prod-e6htdkgjgxevgdge.brazilsouth-01.azurewebsites.net"
+                MAX_RETRIES=5
+                RETRY_COUNT=0
+                
+                echo ""
+                echo "Testing /api/health..."
+                while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+                  echo "🔄 Intento $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+                  
+                  response=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/api/health" || echo -e "\n000")
+                  http_code=$(echo "$response" | tail -n1)
+                  body=$(echo "$response" | head -n-1)
+                  
+                  echo "📡 Response Code: $http_code"
+                  echo "📄 Response Body: $body"
+                  
+                  if [ "$http_code" -eq 200 ]; then
+                    echo "✅ Health check passed!"
+                    break
+                  else
+                    echo "⚠️ Status: $http_code (esperado: 200)"
+                    RETRY_COUNT=$((RETRY_COUNT + 1))
+                    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                      echo "⏳ Esperando 15 segundos antes de reintentar..."
+                      sleep 15
+                    fi
+                  fi
+                done
+                
+                if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                  echo "❌ Health check falló después de $MAX_RETRIES intentos"
+                  exit 1
+                fi
+                
+                echo ""
+                echo "Testing /api/products..."
+                response=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/api/products")
+                http_code=$(echo "$response" | tail -n1)
+                body=$(echo "$response" | head -n-1)
+                
+                echo "📡 Response Code: $http_code"
+                echo "📄 Response Body: $body"
+                
+                if [ "$http_code" -eq 200 ]; then
+                  echo "✅ Products endpoint passed!"
+                else
+                  echo "❌ Products endpoint failed! Status: $http_code"
+                  exit 1
+                fi
+                
+                echo ""
+                echo "🎉 Deployment a PROD completado exitosamente!"
+              displayName: '🔍 Smoke Tests PROD (Con Retry)'
+              continueOnError: false
