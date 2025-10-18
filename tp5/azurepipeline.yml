@@ -55,7 +55,7 @@ stages:
         inputs:
           testResultsFormat: 'JUnit'
           testResultsFiles: '**/junit.xml'
-          searchFolder: 'coffehub/backend'
+          searchFolder: 'tp5/coffehub/backend'
           mergeTestResults: true
           failTaskOnFailedTests: true
           testRunTitle: 'Backend Tests'
@@ -73,7 +73,7 @@ stages:
       # ---- Publicar Artefacto Backend ----
       - task: PublishPipelineArtifact@1
         inputs:
-          targetPath: 'coffehub/backend'
+          targetPath: 'tp5/coffehub/backend'
           artifact: 'backend-code'
         displayName: "📦 Publicar Código Backend"
         condition: succeeded()
