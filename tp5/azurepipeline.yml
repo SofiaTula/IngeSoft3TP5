@@ -18,13 +18,13 @@ variables:
   - name: azureServiceConnection
     value: 'azure-tp05-connection'
   - name: backendAppNameQA
-    value: 'coffeehub-Backend-QA'
+    value: 'coffehub-Backend-QA'
   - name: frontendAppNameQA
-    value: 'coffeehub-Front-QA'
+    value: 'coffehub-Front-QA'
   - name: backendAppNameProd
-    value: 'coffeehub-Backend-PROD'
+    value: 'coffehub-Backend-PROD'
   - name: frontendAppNameProd
-    value: 'coffeehub-Front-PROD'
+    value: 'coffehub-Front-PROD'
 
 # ==================== STAGE 1: BUILD Y TESTS ====================
 stages:
